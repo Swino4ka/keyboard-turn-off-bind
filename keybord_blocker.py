@@ -1,29 +1,53 @@
 import keyboard
-import time
 import os
 
 HOTKEY_FILE = "hotkey.txt"
 if not os.path.exists(HOTKEY_FILE):
-    print("Hotkey not found. First run: set_hotkey.py")
+    print("File hotkey.txt is not found. First, launch set_hotkey.py")
     exit(1)
 
 with open(HOTKEY_FILE, "r") as f:
-    hotkey = f.read().strip()
+    try:
+        hotkey_scan_code = int(f.read().strip())
+    except ValueError:
+        print("Wrong formate, hotkey.txt")
+        exit(1)
 
 keyboard_blocked = False
+
+# Латиница, цифры, кириллица
+latin_letters = list("abcdefghijklmnopqrstuvwxyz0123456789")
+russian_letters = list("ёйцукенгшщзхъфывапролджэячсмитьбю")
+other_keys = [
+    'space', 'enter', 'tab', 'backspace', 'shift', 'ctrl', 'alt',
+    'caps lock', 'esc', 'up', 'down', 'left', 'right',
+    'home', 'end', 'delete', 'insert', 'page up', 'page down',
+    'win', 'menu', 'print screen'
+]
+
+keys_to_block = latin_letters + russian_letters + other_keys
 
 def toggle_block():
     global keyboard_blocked
     keyboard_blocked = not keyboard_blocked
-    print("Keybord is blocked." if keyboard_blocked else "Keybord is unblocked.")
+    if keyboard_blocked:
+        print("Keybord is blocked.")
+        for key in keys_to_block:
+            try:
+                keyboard.block_key(key)
+            except:
+                pass
+    else:
+        print("Keybord is unblocked.")
+        keyboard.unhook_all()
+        keyboard.hook(dummy_block)
+        keyboard.on_press_key(hotkey_scan_code, lambda _: toggle_block(), suppress=False)
 
-keyboard.add_hotkey(hotkey, toggle_block)
+def dummy_block(e):
+    pass
 
-print("Program is running. Press the hotkey to block/unblock the keyboard.")
-try:
-    while True:
-        if keyboard_blocked:
-            keyboard.block_key('*') 
-        time.sleep(0.1)
-except KeyboardInterrupt:
-    print("Closing the program.")
+keyboard.hook(dummy_block)
+keyboard.on_press_key(hotkey_scan_code, lambda _: toggle_block(), suppress=False)
+
+print(f"Program is ready. (scan_code): {hotkey_scan_code}")
+keyboard.wait()
